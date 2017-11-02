@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/containous/mux"
+	"github.com/urfave/negroni"
 	"net/http"
-	"os"
 )
 
 func redirect(w http.ResponseWriter, r *http.Request) {
@@ -23,12 +24,12 @@ func end(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3000"
-	}
+	systemRouter := mux.NewRouter()
+	negroniInstance := negroni.New()
+	negroniInstance.UseHandler(systemRouter)
 
-	http.HandleFunc("/redirect", redirect)
-	http.HandleFunc("/end", end)
-	http.ListenAndServeTLS(":"+port, "selfsigned.crt", "selfsigned.key", nil)
+	systemRouter.Methods("GET", "HEAD").Path("/redirect").HandlerFunc(redirect)
+	systemRouter.Methods("GET", "HEAD").Path("/end").HandlerFunc(end)
+
+	http.ListenAndServeTLS(":3000", "selfsigned.crt", "selfsigned.key", negroniInstance)
 }
