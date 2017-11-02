@@ -1,11 +1,31 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
+	"github.com/NYTimes/gziphandler"
 	"github.com/containous/mux"
 	"github.com/urfave/negroni"
 	"net/http"
 )
+
+// Compress is a middleware that allows redirection
+type Compress struct{}
+
+// ServerHTTP is a function used by Negroni
+func (c *Compress) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	gzipHandler(next).ServeHTTP(rw, r)
+}
+
+func gzipHandler(h http.Handler) http.Handler {
+	wrapper, err := gziphandler.GzipHandlerWithOpts(
+		gziphandler.CompressionLevel(gzip.DefaultCompression),
+		gziphandler.MinSize(1))
+	if err != nil {
+		fmt.Println(err)
+	}
+	return wrapper(h)
+}
 
 func redirect(w http.ResponseWriter, r *http.Request) {
 	url := "https://localhost:3000/end"
@@ -26,6 +46,7 @@ func end(w http.ResponseWriter, r *http.Request) {
 func main() {
 	systemRouter := mux.NewRouter()
 	negroniInstance := negroni.New()
+	negroniInstance.Use(&Compress{})
 	negroniInstance.UseHandler(systemRouter)
 
 	systemRouter.Methods("GET", "HEAD").Path("/redirect").HandlerFunc(redirect)
